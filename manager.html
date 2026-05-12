@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>فريش آب — المدير</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+var FIREBASE_CONFIG={apiKey:"AIzaSyBD0qRg-7-Ixn6PXJZiHhhmWqjEtW-eIiM",authDomain:"freshup-2026.firebaseapp.com",databaseURL:"https://freshup-2026-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"freshup-2026",storageBucket:"freshup-2026.firebasestorage.app",messagingSenderId:"987696801684",appId:"1:987696801684:web:c1544fa7baaddcaf341181"};
+var SYNC_KEYS=["fu_balance","fu_inventory","fu_entries","fu_needs","fu_goals","fu_prices","fu_nc","fu_employees"];
+var LOCAL_ONLY=["fu_lang","fu_credentials"];
+var FU_DB=null,FU_READY=false,FU_CACHE={},_wT={},_rT=null,_pending={};
+window._realLS=window.localStorage;
+var _pLS={
+  getItem:function(k){if(FU_CACHE.hasOwnProperty(k)&&FU_CACHE[k]!==null)return FU_CACHE[k];return window._realLS.getItem(k);},
+  setItem:function(k,v){try{window._realLS.setItem(k,v);}catch(e){}if(LOCAL_ONLY.indexOf(k)>=0)return;var s=SYNC_KEYS.some(function(x){return k===x||k.startsWith(x);});if(!s)return;FU_CACHE[k]=v;if(!FU_DB){_pending[k]=v;return;}_write(k,v);},
+  removeItem:function(k){try{window._realLS.removeItem(k);}catch(e){}delete FU_CACHE[k];if(FU_DB)FU_DB.ref("freshup/"+k).remove();},
+  key:function(n){return window._realLS.key(n);},clear:function(){window._realLS.clear();}
+};
+function _write(k,v){clearTimeout(_wT[k]);_wT[k]=setTimeout(function(){FU_DB.ref("freshup/"+k).set(v).then(_pulse).catch(function(e){console.error("FU",k,e);});},400);}
+function _flush(){Object.keys(_pending).forEach(function(k){_write(k,_pending[k]);delete _pending[k];});}
+try{Object.defineProperty(window,"localStorage",{get:function(){return _pLS;},configurable:true});}catch(e){}
+function _loadFB(cb){var n=0,u=["https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js","https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"];u.forEach(function(src){var s=document.createElement("script");s.src=src;s.onload=function(){if(++n===2)cb();};document.head.appendChild(s);});}
+function _initFB(){
+  if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+  FU_DB=firebase.database();_dot("جاري التحميل...","#d4721f");
+  FU_DB.ref("freshup").once("value").then(function(snap){
+    var d=snap.val()||{};Object.keys(d).forEach(function(k){if(d[k]!==null){FU_CACHE[k]=d[k];try{window._realLS.setItem(k,d[k]);}catch(e){}}}); 
+    FU_READY=true;_dot("متصل ✅","#1e9e5e");_flush();
+    FU_DB.ref("freshup").on("child_changed",function(s){var k=s.key,v=s.val();if(v!==null){FU_CACHE[k]=v;try{window._realLS.setItem(k,v);}catch(e){}}clearTimeout(_rT);_rT=setTimeout(_rerender,400);});
+    setTimeout(_rerender,200);
+  }).catch(function(e){FU_READY=true;_flush();_dot("❌ خطأ","#c0392b");});
+}
+function _rerender(){if(typeof _currentView!=="undefined"&&_currentView)showView(_currentView);}
+function _dot(m,c){var d=document.getElementById("fu-b"),t=document.getElementById("fu-t"),x=document.getElementById("fu-d");if(t)t.textContent=m;if(x)x.style.background=c;if(d)d.style.opacity="1";}
+function _pulse(){_dot("✅ محفوظ","#1e9e5e");setTimeout(function(){var b=document.getElementById("fu-b");if(b)b.style.opacity="0";},3000);}
+window.FU_SYNC={isReady:function(){return FU_READY;},getCache:function(){return FU_CACHE;}};
+(function(){function boot(){_loadFB(_initFB);}if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",boot);}else{boot();}})();
+</script>
+<style>
+:root{--dk:#042a2b;--tl:#025253;--sg:#c7d78f;--yw:#e7dc83;--gn:#1e9e5e;--rd:#c0392b;--or:#d4721f;--fn:'Outfit',sans-serif;--nm:'IBM Plex Mono',monospace;}
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--fn);background:#f0f1ec;color:var(--dk);min-height:100vh;display:flex;}
+.sb{width:220px;min-height:100vh;background:var(--dk);display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;z-index:100;overflow-y:auto;}
+.sb-top{padding:16px;border-bottom:1px solid rgba(199,215,143,.1);}
+.sb-logo{color:var(--sg);font-size:1.2rem;font-weight:900;margin-bottom:6px;}
+.sb-role{background:rgba(231,220,131,.15);color:var(--yw);font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:6px;}
+.sb-nm{color:#fff;font-size:1rem;font-weight:700;}
+.sb-sec{color:rgba(199,215,143,.4);font-size:.62rem;font-weight:700;padding:12px 16px 4px;text-transform:uppercase;letter-spacing:.05em;}
+.sni{display:flex;align-items:center;gap:9px;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.8);font-family:var(--fn);font-size:.83rem;font-weight:600;width:100%;text-align:right;transition:background .15s;}
+.sni:hover{background:rgba(199,215,143,.08);}
+.sni.active{background:rgba(199,215,143,.14);color:var(--sg);}
+.sni .ni{font-size:1rem;width:22px;flex-shrink:0;}
+.main{margin-right:220px;min-height:100vh;display:flex;flex-direction:column;width:calc(100% - 220px);}
+.topbar{background:#fff;border-bottom:1px solid #e5e7e0;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.tb-bc{display:flex;align-items:center;gap:6px;font-size:.78rem;color:#aaa;}
+.tb-rt{color:var(--tl);font-weight:800;}
+.tb-t{color:var(--dk);font-weight:700;}
+.content{padding:16px 20px 60px;flex:1;}
+.view{display:none;}
+.view.active{display:block;}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e7e0;margin-bottom:14px;overflow:hidden;}
+.fcard{background:rgba(4,42,43,.04);border-radius:10px;padding:13px 16px;margin-bottom:13px;border:1px solid rgba(4,42,43,.07);}
+.fct{font-weight:800;font-size:.82rem;color:var(--tl);margin-bottom:10px;}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f0f1ec;}
+.ct{font-weight:800;font-size:.85rem;}
+.ca{background:rgba(2,82,83,.07);color:var(--tl);border:none;border-radius:7px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:var(--fn);}
+.krow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.k3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.k2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.kc{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e7e0;}
+.kc-tl{border-right:4px solid var(--tl);}
+.kc-gn{border-right:4px solid var(--gn);}
+.kc-or{border-right:4px solid var(--or);}
+.kc-rd{border-right:4px solid var(--rd);}
+.kl{font-size:.68rem;color:#888;font-weight:700;margin-bottom:5px;}
+.kv{font-size:1.4rem;font-weight:900;font-family:var(--nm);line-height:1;}
+.ks{font-size:.68rem;color:#aaa;margin-top:4px;}
+table{width:100%;border-collapse:collapse;font-size:.81rem;}
+th{padding:9px 12px;text-align:right;background:var(--dk);color:var(--sg);font-size:.67rem;font-weight:700;}
+td{padding:8px 12px;border-top:1px solid rgba(4,42,43,.05);}
+.ptabs{display:flex;gap:6px;margin-bottom:13px;flex-wrap:wrap;}
+.ptab{background:rgba(4,42,43,.06);color:#666;border:none;border-radius:8px;padding:7px 13px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--fn);}
+.ptab.active{background:var(--tl);color:#fff;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:800;font-family:var(--nm);}
+.b-gn{background:rgba(30,158,94,.12);color:var(--gn);}
+.b-rd{background:rgba(192,57,43,.12);color:var(--rd);}
+.b-or{background:rgba(212,114,31,.12);color:var(--or);}
+#lov{position:fixed;inset:0;background:linear-gradient(160deg,var(--dk),#064d4d);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.lbx{background:#fff;border-radius:20px;padding:36px;width:340px;max-width:95vw;}
+.ll{text-align:center;margin-bottom:22px;}
+.fg{margin-bottom:12px;}
+.fg label{display:block;font-size:.75rem;font-weight:700;color:#666;margin-bottom:5px;}
+.fg input{width:100%;border:1.5px solid #dde0d8;border-radius:9px;padding:10px 13px;font-family:var(--fn);font-size:.9rem;}
+.fg input:focus{outline:none;border-color:var(--tl);}
+.lerr{color:var(--rd);font-size:.75rem;margin-bottom:8px;display:none;}
+.lbtn{width:100%;background:linear-gradient(135deg,var(--tl),#037273);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.9rem;font-weight:800;cursor:pointer;font-family:var(--fn);}
+.empty-msg{text-align:center;padding:40px;color:#aaa;font-size:.85rem;}
+.btn-sv{background:var(--tl);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:var(--fn);font-size:.8rem;font-weight:700;cursor:pointer;}
+.wcard{background:linear-gradient(135deg,var(--dk),var(--tl));border-radius:14px;padding:18px 20px;margin-bottom:14px;color:#fff;}
+#fu-b{position:fixed;bottom:14px;right:14px;background:rgba(4,42,43,.9);color:#c7d78f;font-size:.68rem;font-family:var(--fn);font-weight:700;padding:5px 13px;border-radius:20px;z-index:99999;display:flex;align-items:center;gap:6px;pointer-events:none;transition:opacity .5s;opacity:0;}
+@media(max-width:820px){.sb{width:50px;}.sni span:not(.ni),.sb-sec,.sb-top .sb-nm,.sb-top .sb-role,.sb-top .sb-logo{display:none;}.sni{justify-content:center;padding:10px;}.main{margin-right:50px;width:calc(100% - 50px);}.krow{grid-template-columns:1fr 1fr;}.k3{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div id="lov">
+  <div class="lbx">
+    <div class="ll"><div style="font-size:2.5rem;margin-bottom:8px;">⭐</div><h2 style="font-weight:900;color:var(--dk);">فريش آب</h2><div style="font-size:.75rem;color:#aaa;">بوابة المدير</div></div>
+    <div class="fg"><label>الرقم الوظيفي</label><input type="text" id="l-uid" placeholder="001"/></div>
+    <div class="fg"><label>كلمة المرور</label><input type="password" id="l-pass" placeholder="••••"/></div>
+    <div class="lerr" id="l-err"></div>
+    <button class="lbtn" onclick="doLogin()">دخول</button>
+  </div>
+</div>
+
+<div class="sb">
+  <div class="sb-top">
+    <div class="sb-logo">فريش آب ⭐</div>
+    <div class="sb-role">مدير</div>
+    <div class="sb-nm" id="sb-nm">—</div>
+  </div>
+  <div class="sb-sec">الرئيسية</div>
+  <button class="sni" onclick="showView('dash',this)"><span class="ni">📊</span><span>لوحة التحكم</span></button>
+  <button class="sni" onclick="showView('sales',this)"><span class="ni">📈</span><span>تقرير المبيعات</span></button>
+  <button class="sni" onclick="showView('compare',this)"><span class="ni">🔄</span><span>مقارنة المناطق</span></button>
+  <button class="sni" onclick="showView('reports',this)"><span class="ni">📥</span><span>التقارير</span></button>
+  <div class="sb-sec">المخزون</div>
+  <button class="sni" onclick="showView('expiry',this)"><span class="ni">⚠️</span><span>الاكسبايري</span></button>
+  <button class="sni" onclick="showView('inventory',this)"><span class="ni">📦</span><span>الجرد</span></button>
+  <button class="sni" onclick="showView('needs',this)"><span class="ni">🛒</span><span>الاحتياجات</span></button>
+  <div class="sb-sec">الإدارة</div>
+  <button class="sni" onclick="showView('balances',this)"><span class="ni">💰</span><span>الموازنة</span></button>
+  <button class="sni" onclick="showView('goals',this)"><span class="ni">🎯</span><span>أهداف المبيعات</span></button>
+  <button class="sni" onclick="showView('prices',this)"><span class="ni">💲</span><span>الأسعار والتكاليف</span></button>
+  <button class="sni" onclick="showView('employees',this)"><span class="ni">👥</span><span>الموظفون</span></button>
+  <div style="margin-top:auto;padding:12px 16px;">
+    <button onclick="doLogout()" style="width:100%;background:rgba(192,57,43,.15);color:var(--rd);border:none;border-radius:8px;padding:9px;font-family:var(--fn);font-size:.78rem;font-weight:700;cursor:pointer;">تسجيل الخروج</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="tb-bc"><span class="tb-rt">فريش آب</span><span style="color:#ccc;"> › </span><span class="tb-t" id="tb-t">لوحة التحكم</span></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span id="tb-wk" style="background:rgba(2,82,83,.07);color:var(--tl);font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:7px;font-family:var(--nm);"></span>
+      <button onclick="location.reload()" style="background:rgba(4,42,43,.07);border:none;border-radius:8px;padding:6px 10px;cursor:pointer;">🔄</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- DASH -->
+    <div class="view active" id="view-dash">
+      <div class="wcard"><div style="font-size:1rem;font-weight:700;margin-bottom:4px;" id="wg">—</div><div style="font-size:.78rem;color:rgba(199,215,143,.7);" id="ws2">—</div><div style="font-size:.7rem;color:rgba(199,215,143,.5);margin-top:6px;" id="wd">—</div></div>
+      <div class="krow">
+        <div class="kc kc-tl"><div class="kl">📈 مبيعات الأسبوع</div><div class="kv" id="kv-s">—</div><div class="ks">ريال</div></div>
+        <div class="kc kc-gn"><div class="kl">🎯 نسبة الهدف</div><div class="kv" id="kv-g">—</div><div class="ks" id="ks-g">—</div></div>
+        <div class="kc kc-or"><div class="kl">⚠️ اكسبايري الأسبوع</div><div class="kv" id="kv-ec">—</div><div class="ks">منتج</div></div>
+        <div class="kc kc-rd"><div class="kl">💸 تكلفة الاكسبايري</div><div class="kv" id="kv-ek">—</div><div class="ks">ريال</div></div>
+      </div>
+      <div class="k2">
+        <div class="card"><div class="ch"><div class="ct">🏆 ترتيب الفروع</div></div><div id="dash-rank" style="padding:12px;max-height:250px;overflow-y:auto;"></div></div>
+        <div class="card"><div class="ch"><div class="ct">🚨 تنبيهات فورية</div></div><div id="dash-alerts" style="padding:12px;max-height:250px;overflow-y:auto;"></div></div>
+      </div>
+    </div>
+
+    <!-- SALES -->
+    <div class="view" id="view-sales">
+      <div class="ptabs">
+        <button class="ptab active" data-reg="all" onclick="setSalesReg('all',this)">🌍 الكل</button>
+        <button class="ptab" data-reg="riyadh" onclick="setSalesReg('riyadh',this)">🏙️ الرياض</button>
+        <button class="ptab" data-reg="qassim" onclick="setSalesReg('qassim',this)">🌴 القصيم</button>
+      </div>
+      <div class="krow" id="sales-kpis"></div>
+      <div class="card"><div class="ch"><div class="ct">📈 المبيعات حسب الفرع</div><button class="ca" onclick="exportSales()">📥 Excel</button></div>
+        <div id="sales-tbl" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <!-- COMPARE -->
+    <div class="view" id="view-compare">
+      <div class="k2" id="cmp-kpis"></div>
+      <div class="card"><div class="ch"><div class="ct">🔄 الرياض vs القصيم</div></div><div id="cmp-tbl" style="overflow-x:auto;"></div></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="view" id="view-reports">
+      <div class="fcard">
+        <div class="fct">📥 تصدير التقارير</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="btn-sv" onclick="exportAll('balance')" style="padding:14px;">💰 تقرير الموازنة</button>
+          <button class="btn-sv" onclick="exportAll('expiry')" style="padding:14px;background:var(--or);">⚠️ تقرير الاكسبايري</button>
+          <button class="btn-sv" onclick="exportAll('inventory')" style="padding:14px;background:#555;">📦 تقرير الجرد</button>
+          <button class="btn-sv" onclick="exportAll('needs')" style="padding:14px;background:var(--gn);">🛒 تقرير الاحتياجات</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPIRY -->
+    <div class="view" id="view-expiry">
+      <div class="ptabs">
+        <button class="ptab active" onclick="setExpFilter('all',this)">📋 الكل</button>
+        <button class="ptab" onclick="setExpFilter('week',this)">📅 هذا الأسبوع</button>
+        <button class="ptab" onclick="setExpFilter('month',this)">📆 الشهر</button>
+      </div>
+      <div class="k3">
+        <div class="kc kc-rd"><div class="kl">منتجات منتهية</div><div class="kv" id="et">—</div><div class="ks" id="et-s">—</div></div>
+        <div class="kc kc-or"><div class="kl">تكلفة الهدر</div><div class="kv" id="ec">—</div><div class="ks">ريال</div></div>
+        <div class="kc kc-tl"><div class="kl">نسبة من المبيعات</div><div class="kv" id="ep">—</div><div class="ks">%</div></div>
+      </div>
+      <div class="card"><div class="ch"><div class="ct">📋 قائمة الاكسبايري</div><button class="ca" onclick="exportExpiry()">📥</button></div>
+        <div id="exp-list" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div class="view" id="view-inventory">
+      <div class="ptabs">
+        <button class="ptab active" onclick="setInvMode('list',this)">📋 قائمة العمليات</button>
+        <button class="ptab" onclick="setInvMode('compare',this)">📊 مقارنة الفروع</button>
+      </div>
+      <div id="inv-content"></div>
+    </div>
+
+    <!-- NEEDS -->
+    <div class="view" id="view-needs">
+      <div class="k3">
+        <div class="kc kc-tl"><div class="kl">إجمالي التكلفة</div><div class="kv" id="nd-tc">—</div><div class="ks">ريال</div></div>
+        <div class="kc kc-gn"><div class="kl">تم التوفير</div><div class="kv" id="nd-td">—</div><div class="ks">ريال</div></div>
+        <div class="kc kc-or"><div class="kl">المتبقي</div><div class="kv" id="nd-tp">—</div><div class="ks">ريال</div></div>
+      </div>
+      <div class="card"><div class="ch"><div class="ct">🛒 قائمة الاحتياجات</div></div>
+        <div id="nd-list" style="padding:12px;"></div>
+      </div>
+    </div>
+
+    <!-- BALANCES -->
+    <div class="view" id="view-balances">
+      <div class="ptabs">
+        <button class="ptab active" onclick="setBalReg('all',this)">🌍 الكل</button>
+        <button class="ptab" onclick="setBalReg('riyadh',this)">🏙️ الرياض</button>
+        <button class="ptab" onclick="setBalReg('qassim',this)">🌴 القصيم</button>
+      </div>
+      <div class="krow" id="bal-kpis"></div>
+      <div class="card"><div class="ch"><div class="ct">💰 الموازنات</div><button class="ca" onclick="exportAll('balance')">📥</button></div>
+        <div id="bal-list" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="view" id="view-goals">
+      <div class="ptabs">
+        <button class="ptab active" onclick="setGoalReg('all',this)">🌍 الكل</button>
+        <button class="ptab" onclick="setGoalReg('riyadh',this)">🏙️ الرياض</button>
+        <button class="ptab" onclick="setGoalReg('qassim',this)">🌴 القصيم</button>
+      </div>
+      <div id="goals-content"></div>
+      <button class="btn-sv" onclick="toast('✅ تم الحفظ')" style="margin-top:10px;">💾 حفظ</button>
+    </div>
+
+    <!-- PRICES -->
+    <div class="view" id="view-prices">
+      <div class="fcard">
+        <div class="fct">💲 الأسعار والتكاليف</div>
+        <div id="prices-list"></div>
+        <button class="btn-sv" onclick="savePrices()" style="margin-top:12px;">💾 حفظ الأسعار</button>
+      </div>
+    </div>
+
+    <!-- EMPLOYEES -->
+    <div class="view" id="view-employees">
+      <div class="card"><div class="ch"><div class="ct">👥 الموظفون</div></div>
+        <div id="emp-list" style="padding:12px;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="fu-b"><span id="fu-d" style="width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;"></span><span id="fu-t">Firebase...</span></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+const CREDS={"001":{name:"المدير",role:"manager",pass:"1234"}};
+const PRODS={sandwich:["بوريتو دجاج","فيينا دجاج مشوي","كلوب دجاج رانش","باجيت دجاج رانش","اونيون دجاج سبايسي","باجيت دجاج فاهيتا","باجيت دجاج تندوري","شيباتا دجاج باربكيو","فوكاتشا جبن حلومي كبير","فوكاتشا جبن حلومي صغير","بيجلز جبن تيركي","باجيت اربع اجبان","بيجلز جبن حلومي","شيباتا تونة وذرة"],juices:["ليمون بالنعناع","مانجو","برتقال","رمان"],salads:["سلطة فواكه","سلطة سيزر"],desserts:["كنافة","أم علي","مهلبية","بسبوسة","كريم برولي","تشيز كيك","براونيز"]};
+const CATS=[{k:"sandwich",l:"ساندويش",i:"🥪"},{k:"juices",l:"عصائر",i:"🥤"},{k:"salads",l:"سلطات",i:"🥗"},{k:"desserts",l:"حلى طازجة",i:"🍮"}];
+const BR_R=["فرع الزكاة - الرياض","CCC 127","CCC 146","CCC 150","MUN 124","MUN 126","MUN 140","Red Sea 272","Red Sea 123","SLC 144","SLC 128","EJADA 130","TNFZ 141","ELM 142"];
+const BR_Q=["فرع التربية - القصيم","فرع عنيزة - القصيم","فرع الرس - القصيم","فرع اتمال - القصيم","ماكينة 121","ماكينة 153","ماكينة 143","ماكينة 129","ماكينة 149","ماكينة 145"];
+const ALL_BR=[...BR_R,...BR_Q];
+const DP={"بوريتو دجاج":7.9,"فيينا دجاج مشوي":6.5,"كلوب دجاج رانش":8.1,"باجيت دجاج رانش":7.9,"اونيون دجاج سبايسي":7.4,"باجيت دجاج فاهيتا":7.9,"باجيت دجاج تندوري":8.2,"شيباتا دجاج باربكيو":8.8,"فوكاتشا جبن حلومي كبير":9.5,"فوكاتشا جبن حلومي صغير":7.2,"بيجلز جبن تيركي":8.5,"باجيت اربع اجبان":7.5,"بيجلز جبن حلومي":8.0,"شيباتا تونة وذرة":7.4,"ليمون بالنعناع":3.5,"مانجو":4.0,"برتقال":3.5,"رمان":4.5,"سلطة فواكه":5.5,"سلطة سيزر":5.0,"كنافة":5.0,"أم علي":4.5,"مهلبية":4.0,"بسبوسة":3.8,"كريم برولي":5.5,"تشيز كيك":6.0,"براونيز":4.5};
+const K={bal:"fu_balance",inv:"fu_inventory",exp:"fu_entries",nd:"fu_needs",gl:"fu_goals",pr:"fu_prices",nc:"fu_nc",emp:"fu_employees"};
+const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const VT={dash:"لوحة التحكم",sales:"تقرير المبيعات",compare:"مقارنة المناطق",reports:"التقارير",expiry:"الاكسبايري",inventory:"الجرد",needs:"الاحتياجات",balances:"الموازنة",goals:"أهداف المبيعات",prices:"الأسعار والتكاليف",employees:"الموظفون"};
+
+let CU=null,_currentView="dash",_expFilter="all",_salesReg="all",_balReg="all",_goalReg="all",_invMode="list",_selInvId=null,_selCmpOps=new Set();
+
+// ── Helpers ──────────────────────────────────────────────────────
+function S(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function H(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
+function td(){return new Date().toISOString().split("T")[0];}
+function fd(d){if(!d)return"—";const[y,m,day]=d.split("-");return day+"/"+m+"/"+y;}
+function dn(dt){return dt?DAYS[new Date(dt).getDay()]||"":" ";}
+function pr(nm){const p=JSON.parse(localStorage.getItem(K.pr)||"{}");return p["cost_"+nm]||DP[nm]||0;}
+function ws(o=0){const n=new Date(),d=n.getDay(),s=new Date(n);s.setDate(n.getDate()-d+o*7);s.setHours(0,0,0,0);return s;}
+function wkL(){const s=ws(),e=new Date(s);e.setDate(s.getDate()+6);const f=x=>x.toLocaleDateString("ar-SA",{month:"short",day:"numeric"});return f(s)+" — "+f(e);}
+function inWk(dt){if(!dt)return false;const s=ws(),e=new Date(s);e.setDate(s.getDate()+6);e.setHours(23,59,59);const d=new Date(dt);return d>=s&&d<=e;}
+function inMo(dt){if(!dt)return false;const n=new Date(),d=new Date(dt);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();}
+function getBrs(reg){if(reg==="riyadh")return BR_R;if(reg==="qassim")return BR_Q;return ALL_BR;}
+function filterBals(reg){return JSON.parse(localStorage.getItem(K.bal)||"[]").filter(b=>getBrs(reg).includes(b.site));}
+function toast(m){let t=document.getElementById("_toast");if(!t){t=document.createElement("div");t.id="_toast";t.style.cssText="position:fixed;bottom:60px;right:50%;transform:translateX(50%);background:rgba(4,42,43,.9);color:#fff;padding:9px 18px;border-radius:20px;z-index:99999;font-size:.8rem;font-family:var(--fn);font-weight:700;";document.body.appendChild(t);}t.textContent=m;t.style.opacity="1";clearTimeout(window._toastT);window._toastT=setTimeout(()=>t.style.opacity="0",2500);}
+
+// ── Auth ─────────────────────────────────────────────────────────
+function doLogin(){
+  const uid=(document.getElementById("l-uid").value||"").trim();
+  const pass=(document.getElementById("l-pass").value||"").trim();
+  const err=document.getElementById("l-err");
+  const u=CREDS[uid];
+  if(!u||u.pass!==pass){err.textContent="بيانات الدخول غير صحيحة";err.style.display="block";return;}
+  CU={...u,id:uid};
+  document.getElementById("lov").style.display="none";
+  S("sb-nm",u.name);
+  S("tb-wk",wkL());
+  S("wg","هلا "+u.name+" 👋");
+  S("ws2","مرحباً بك في بوابة الإدارة");
+  S("wd",new Date().toLocaleDateString("ar-SA",{weekday:"long",year:"numeric",month:"long",day:"numeric"}));
+  showView("dash");
+}
+function doLogout(){if(!confirm("تأكيد الخروج؟"))return;CU=null;document.getElementById("lov").style.display="flex";}
+
+// ── Navigation ───────────────────────────────────────────────────
+function showView(v,btn){
+  _currentView=v;
+  document.querySelectorAll(".view").forEach(e=>e.classList.remove("active"));
+  const el=document.getElementById("view-"+v);
+  if(!el){console.error("View not found:",v);return;}
+  el.classList.add("active");
+  if(btn){document.querySelectorAll(".sni").forEach(b=>b.classList.remove("active"));btn.classList.add("active");}
+  else{document.querySelectorAll(".sni").forEach(b=>{if(b.getAttribute("onclick")&&b.getAttribute("onclick").includes("'"+v+"'"))b.classList.add("active");});}
+  S("tb-t",VT[v]||v);
+  const renders={dash:renderDash,sales:renderSales,compare:renderCompare,reports:function(){},expiry:renderExpiry,inventory:renderInventory,needs:renderNeeds,balances:renderBalances,goals:renderGoals,prices:renderPrices,employees:renderEmployees};
+  if(renders[v]){try{renders[v]();}catch(e){console.error("render error",v,e);el.innerHTML+='<div style="padding:20px;margin:16px;background:#fff0f0;border-radius:12px;border:2px solid var(--rd);"><b style="color:var(--rd);">⚠️ خطأ: '+v+'</b><br><span style="font-family:monospace;font-size:.75rem;">'+e.message+'</span></div>';}}
+  window.scrollTo(0,0);
+}
+
+// ── Render: Dashboard ────────────────────────────────────────────
+function renderDash(){
+  const bals=filterBals("all").filter(b=>inWk(b.addedDate));
+  const total=bals.reduce((s,b)=>s+(parseFloat(b.pos)||0),0);
+  const goals=JSON.parse(localStorage.getItem(K.gl)||"{}");
+  const gTot=ALL_BR.reduce((s,br)=>{const g=goals[br]||{};return s+(g.sandwich||0)+(g.juices||0)+(g.salads||0)+(g.desserts||0);},0);
+  const pct=gTot>0?Math.round(total/gTot*100):0;
+  S("kv-s",total.toFixed(0));S("kv-g",pct+"%");S("ks-g","من "+gTot.toFixed(0)+" ريال");
+  const allExp=JSON.parse(localStorage.getItem(K.exp)||"[]").flatMap(r=>(r.items||[]).map(it=>({...it,site:r.site,addedDate:r.addedDate})));
+  const wkExp=allExp.filter(e=>inWk(e.addedDate));
+  const expCost=wkExp.reduce((s,e)=>s+pr(e.nameAr||"")*(parseInt(e.qty)||0),0);
+  S("kv-ec",wkExp.length);S("kv-ek",expCost.toFixed(0));
+  // Branch ranking
+  const byBr={};bals.forEach(b=>{if(!byBr[b.site])byBr[b.site]=0;byBr[b.site]+=(parseFloat(b.pos)||0);});
+  const ranked=Object.entries(byBr).sort((a,b)=>b[1]-a[1]);
+  H("dash-rank",ranked.length?ranked.map(([br,v],i)=>'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f1ec;">'
+    +'<span style="background:rgba(4,42,43,.08);border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;">'+(i+1)+'</span>'
+    +'<span style="flex:1;font-size:.8rem;font-weight:700;">'+br.replace("فرع ","").split(" - ")[0]+'</span>'
+    +'<span style="font-family:var(--nm);font-weight:800;color:var(--tl);font-size:.82rem;">'+v.toFixed(0)+' ر</span></div>').join(""):'<div class="empty-msg">لا مبيعات هذا الأسبوع</div>');
+  // Alerts: expiring soon
+  const soon=allExp.filter(e=>{const d=new Date(e.exp||"");const n=new Date();n.setHours(0,0,0,0);return d<new Date(n.getTime()+4*86400000);}).slice(0,5);
+  H("dash-alerts",soon.length?soon.map(e=>'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f1ec;font-size:.8rem;"><span style="font-weight:600;">'+e.nameAr+'</span><span class="badge b-rd">'+fd(e.exp)+'</span></div>').join(""):'<div class="empty-msg">لا تنبيهات</div>');
+}
+
+// ── Render: Sales ─────────────────────────────────────────────────
+function setSalesReg(r,btn){_salesReg=r;document.querySelectorAll("#view-sales .ptabs .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderSales();}
+function renderSales(){
+  const brs=getBrs(_salesReg);
+  const bals=filterBals(_salesReg).filter(b=>inWk(b.addedDate));
+  const byBr={};bals.forEach(b=>{if(!byBr[b.site])byBr[b.site]=0;byBr[b.site]+=(parseFloat(b.pos)||0);});
+  const total=Object.values(byBr).reduce((s,v)=>s+v,0);
+  const goals=JSON.parse(localStorage.getItem(K.gl)||"{}");
+  const gTot=brs.reduce((s,br)=>{const g=goals[br]||{};return s+(g.sandwich||0)+(g.juices||0)+(g.salads||0)+(g.desserts||0);},0);
+  H("sales-kpis",'<div class="kc kc-tl"><div class="kl">إجمالي الأسبوع</div><div class="kv">'+total.toFixed(0)+'</div><div class="ks">ريال</div></div>'
+    +'<div class="kc kc-gn"><div class="kl">الهدف</div><div class="kv">'+(gTot>0?Math.round(total/gTot*100)+"%":"—")+'</div><div class="ks">'+gTot.toFixed(0)+' هدف</div></div>'
+    +'<div class="kc kc-or"><div class="kl">الفروع النشطة</div><div class="kv">'+Object.keys(byBr).length+'</div><div class="ks">فرع</div></div>'
+    +'<div class="kc kc-rd"><div class="kl">متوسط الفرع</div><div class="kv">'+(Object.keys(byBr).length?Math.round(total/Object.keys(byBr).length):"—")+'</div><div class="ks">ريال</div></div>');
+  const rows=brs.map(br=>{const v=byBr[br]||0;const g=goals[br]||{};const gBr=(g.sandwich||0)+(g.juices||0)+(g.salads||0)+(g.desserts||0);return{br,v,g:gBr,pct:gBr>0?Math.round(v/gBr*100):0};}).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+  H("sales-tbl",rows.length?'<table><thead><tr><th>الفرع</th><th>المبيعات</th><th>الهدف</th><th>النسبة</th></tr></thead><tbody>'
+    +rows.map(r=>'<tr><td style="font-weight:700;">'+r.br.replace("فرع ","").split(" - ")[0]+'</td><td style="font-family:var(--nm);font-weight:800;color:var(--tl);">'+r.v.toFixed(0)+'</td><td style="font-family:var(--nm);">'+r.g.toFixed(0)+'</td><td><span class="badge '+(r.pct>=100?"b-gn":r.pct>=70?"b-or":"b-rd")+'">'+r.pct+'%</span></td></tr>').join("")+'</tbody></table>':'<div class="empty-msg">لا مبيعات هذا الأسبوع</div>');
+}
+function exportSales(){
+  const bals=filterBals("all");
+  const wb=XLSX.utils.book_new();
+  const ws_=XLSX.utils.aoa_to_sheet([["الفرع","التاريخ","POS","نقدي","مكينة","الفرق"],...bals.map(b=>[b.site,b.addedDate,b.pos||0,b.cash||0,b.machine||0,b.diff||0])]);
+  XLSX.utils.book_append_sheet(wb,ws_,"المبيعات");
+  XLSX.writeFile(wb,"مبيعات_"+td()+".xlsx");toast("📥 تم التصدير");
+}
+
+// ── Render: Compare ───────────────────────────────────────────────
+function renderCompare(){
+  const calc=reg=>{const b=filterBals(reg).filter(x=>inWk(x.addedDate));const t=b.reduce((s,x)=>s+(parseFloat(x.pos)||0),0);const g=JSON.parse(localStorage.getItem(K.gl)||"{}");const gt=getBrs(reg).reduce((s,br)=>{const gx=g[br]||{};return s+(gx.sandwich||0)+(gx.juices||0)+(gx.salads||0);},0);return{total:t,goal:gt,pct:gt>0?Math.round(t/gt*100):0,count:b.length};};
+  const r=calc("riyadh"),q=calc("qassim");
+  H("cmp-kpis",'<div class="kc kc-tl"><div class="kl">🏙️ الرياض — مبيعات</div><div class="kv">'+r.total.toFixed(0)+'</div><div class="ks">'+r.pct+'% من الهدف</div></div>'
+    +'<div class="kc kc-gn"><div class="kl">🌴 القصيم — مبيعات</div><div class="kv">'+q.total.toFixed(0)+'</div><div class="ks">'+q.pct+'% من الهدف</div></div>');
+  H("cmp-tbl",'<table><thead><tr><th>المقياس</th><th>🏙️ الرياض</th><th>🌴 القصيم</th></tr></thead><tbody>'
+    +'<tr><td style="font-weight:700;">مبيعات الأسبوع</td><td style="font-family:var(--nm);color:var(--tl);font-weight:800;">'+r.total.toFixed(0)+' ريال</td><td style="font-family:var(--nm);color:var(--gn);font-weight:800;">'+q.total.toFixed(0)+' ريال</td></tr>'
+    +'<tr><td style="font-weight:700;">الهدف</td><td style="font-family:var(--nm);">'+r.goal.toFixed(0)+'</td><td style="font-family:var(--nm);">'+q.goal.toFixed(0)+'</td></tr>'
+    +'<tr><td style="font-weight:700;">النسبة</td><td><span class="badge '+(r.pct>=100?"b-gn":r.pct>=70?"b-or":"b-rd")+'">'+r.pct+'%</span></td><td><span class="badge '+(q.pct>=100?"b-gn":q.pct>=70?"b-or":"b-rd")+'">'+q.pct+'%</span></td></tr>'
+    +'<tr><td style="font-weight:700;">الفروع النشطة</td><td style="font-family:var(--nm);">'+r.count+'</td><td style="font-family:var(--nm);">'+q.count+'</td></tr>'
+    +'</tbody></table>');
+}
+
+// ── Render: Expiry ────────────────────────────────────────────────
+function setExpFilter(f,btn){_expFilter=f;document.querySelectorAll("#view-expiry .ptabs .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderExpiry();}
+function renderExpiry(){
+  let items=JSON.parse(localStorage.getItem(K.exp)||"[]").flatMap(r=>{
+    if(_expFilter==="week"&&!inWk(r.addedDate))return[];
+    if(_expFilter==="month"&&!inMo(r.addedDate))return[];
+    return (r.items||[]).map(it=>({...it,site:r.site,addedDate:r.addedDate}));
+  });
+  const total=items.reduce((s,e)=>s+(parseInt(e.qty)||0),0);
+  const cost=items.reduce((s,e)=>s+pr(e.nameAr||"")*(parseInt(e.qty)||0),0);
+  const sales=filterBals("all").reduce((s,b)=>s+(parseFloat(b.pos)||0),0);
+  S("et",items.length);S("et-s",total+" وحدة");S("ec",cost.toFixed(0));
+  S("ep",sales>0?(cost/sales*100).toFixed(1):"—");
+  H("exp-list",items.length?'<table><thead><tr><th>الفرع</th><th>التاريخ</th><th>المنتج</th><th>الكمية</th><th>الصلاحية</th><th>التكلفة</th></tr></thead><tbody>'
+    +items.map(it=>'<tr><td style="font-weight:700;">'+(it.site||"").replace("فرع ","").split(" - ")[0]+'</td><td style="font-family:var(--nm);">'+fd(it.addedDate)+'</td><td>'+it.nameAr+'</td><td style="font-family:var(--nm);color:var(--rd);font-weight:800;">'+(it.qty||"—")+'</td><td style="font-family:var(--nm);">'+fd(it.exp)+'</td><td style="font-family:var(--nm);color:var(--or);">'+(pr(it.nameAr||"")*(parseInt(it.qty)||0)).toFixed(0)+'</td></tr>').join("")+'</tbody></table>':'<div class="empty-msg">لا بيانات اكسبايري</div>');
+}
+function exportExpiry(){
+  const items=JSON.parse(localStorage.getItem(K.exp)||"[]").flatMap(r=>(r.items||[]).map(it=>({...it,site:r.site,addedDate:r.addedDate})));
+  const wb=XLSX.utils.book_new();
+  const ws_=XLSX.utils.aoa_to_sheet([["الفرع","التاريخ","المنتج","الكمية","الصلاحية","التكلفة"],...items.map(it=>[it.site,it.addedDate,it.nameAr,it.qty,it.exp,(pr(it.nameAr)*(parseInt(it.qty)||0)).toFixed(2)])]);
+  XLSX.utils.book_append_sheet(wb,ws_,"الاكسبايري");XLSX.writeFile(wb,"اكسبايري_"+td()+".xlsx");toast("📥 تم التصدير");
+}
+
+// ── Render: Inventory ─────────────────────────────────────────────
+function setInvMode(m,btn){_invMode=m;_selInvId=null;document.querySelectorAll("#view-inventory .ptabs .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderInventory();}
+function renderInventory(){
+  const all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort((a,b)=>b.addedDate>a.addedDate?1:-1);
+  if(_invMode==="compare"){renderInvCompare(all);return;}
+  if(_selInvId){const op=all.find(r=>String(r.id)===String(_selInvId));if(op){renderInvDetail(op,all);return;}_selInvId=null;}
+  H("inv-content",all.length?'<div class="card"><div class="ch"><div class="ct">📦 عمليات الجرد</div></div>'
+    +'<table><thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>الكاشير</th><th>الوحدات</th><th></th></tr></thead><tbody>'
+    +all.map((op,i)=>{const tot=(op.items||[]).reduce((s,p)=>s+(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0),0);return'<tr style="cursor:pointer;" data-oid="'+op.id+'" onclick="selInv(this.dataset.oid)">'
+      +'<td style="font-family:var(--nm);font-weight:800;color:var(--tl);">#'+(all.length-i)+'</td>'
+      +'<td style="font-family:var(--nm);">'+fd(op.addedDate)+'</td>'
+      +'<td style="font-weight:700;">'+(op.site||"").replace("فرع ","").split(" - ")[0]+'</td>'
+      +'<td>'+(op.cashierName||op.cashier||"—")+'</td>'
+      +'<td style="font-family:var(--nm);font-weight:800;color:var(--tl);">'+tot+'</td>'
+      +'<td style="color:var(--tl);font-size:.72rem;font-weight:700;">عرض ←</td></tr>';}).join("")
+    +'</tbody></table></div>':'<div class="empty-msg">لا توجد عمليات جرد</div>');
+}
+function selInv(id){_selInvId=id;renderInventory();}
+function renderInvDetail(op,all){
+  const items=op.items||[];const tot=items.reduce((s,p)=>s+(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0),0);
+  const num=all.length-all.indexOf(op);
+  H("inv-content",'<div style="background:linear-gradient(135deg,var(--dk),var(--tl));border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+    +'<div><div style="color:var(--sg);font-size:.7rem;">عملية جرد</div><div style="color:#fff;font-size:1.6rem;font-weight:900;font-family:var(--nm);">#'+num+'</div></div>'
+    +'<div style="display:flex;gap:14px;"><div style="text-align:center;"><div style="color:var(--sg);font-size:.65rem;">الفرع</div><div style="color:#fff;font-size:.84rem;font-weight:700;">'+(op.site||"").replace("فرع ","").split(" - ")[0]+'</div></div>'
+    +'<div style="text-align:center;"><div style="color:var(--sg);font-size:.65rem;">التاريخ</div><div style="color:#fff;font-size:.84rem;font-weight:700;font-family:var(--nm);">'+fd(op.addedDate)+'</div></div>'
+    +'<div style="text-align:center;"><div style="color:var(--sg);font-size:.65rem;">الوحدات</div><div style="color:#e7dc83;font-size:1rem;font-weight:900;font-family:var(--nm);">'+tot+'</div></div></div>'
+    +'<button onclick="_selInvId=null;renderInventory()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:700;">← رجوع</button></div>'
+    +CATS.map(cat=>{const cp=items.filter(p=>p.cat===cat.k);if(!cp.length)return"";let ct=0;
+    return'<div class="card" style="margin-bottom:10px;"><div class="ch"><div class="ct">'+cat.i+' '+cat.l+'</div></div>'
+    +'<table style="font-size:.78rem;"><thead><tr><th>المنتج</th><th>① الكمية</th><th>① الصلاحية</th><th>② الكمية</th><th>② الصلاحية</th><th>الإجمالي</th></tr></thead><tbody>'
+    +cp.map(p=>{const q1=parseInt(p.batch1?.qty)||0,q2=parseInt(p.batch2?.qty)||0,t=q1+q2;ct+=t;if(!t)return"";return'<tr><td style="font-weight:600;">'+p.nameAr+'</td><td style="text-align:center;font-family:var(--nm);font-weight:700;">'+(q1||"—")+'</td><td style="text-align:center;font-family:var(--nm);color:#888;">'+fd(p.batch1?.exp)+'</td><td style="text-align:center;font-family:var(--nm);font-weight:700;color:var(--gn);">'+(q2||"—")+'</td><td style="text-align:center;font-family:var(--nm);color:#888;">'+fd(p.batch2?.exp)+'</td><td style="text-align:center;font-family:var(--nm);font-weight:800;color:var(--tl);">'+t+'</td></tr>';}).join("")
+    +'<tr style="background:rgba(2,82,83,.07);border-top:2px solid rgba(2,82,83,.15);"><td style="font-weight:900;padding:8px 12px;">إجمالي '+cat.l+'</td><td colspan="4"></td><td style="text-align:center;font-family:var(--nm);font-weight:900;color:var(--tl);">'+ct+'</td></tr></tbody></table></div>';
+    }).join(""));
+}
+function renderInvCompare(all){
+  if(!all)all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort((a,b)=>b.addedDate>a.addedDate?1:-1);
+  if(_selCmpOps.size<2){
+    H("inv-content",'<div class="fcard"><div class="fct">📊 اختر عمليتين أو أكثر للمقارنة</div>'
+      +all.map((op,i)=>{const tot=(op.items||[]).reduce((s,p)=>s+(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0),0);const chk=_selCmpOps.has(String(op.id));const sn=(op.site||"").replace("فرع ","").split(" - ")[0];
+        return'<div data-oid="'+op.id+'" onclick="toggleCmpOp(this.dataset.oid)" style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:9px;cursor:pointer;margin-bottom:5px;background:'+(chk?"rgba(2,82,83,.1)":"#fafaf8")+';border:1.5px solid '+(chk?"rgba(2,82,83,.3)":"#e5e7e0")+';">'
+          +'<input type="checkbox" '+(chk?"checked ":"")+'style="accent-color:var(--tl);width:16px;height:16px;pointer-events:none;"/>'
+          +'<div style="background:'+(chk?"var(--tl)":"rgba(4,42,43,.1)")+';color:'+(chk?"#fff":"var(--tl)")+';border-radius:6px;padding:3px 9px;font-family:var(--nm);font-size:.75rem;font-weight:900;">#'+(all.length-i)+'</div>'
+          +'<div style="flex:1;"><div style="font-size:.8rem;font-weight:700;">'+sn+'</div><div style="font-size:.68rem;color:#888;">'+dn(op.addedDate)+' '+fd(op.addedDate)+'</div></div>'
+          +'<div style="font-family:var(--nm);font-size:.85rem;font-weight:800;color:var(--tl);">'+tot+' وحدة</div></div>';
+      }).join("")
+      +'<button class="btn-sv" onclick="renderInvCompare()" style="margin-top:10px;">🔍 مقارنة</button></div>');
+    return;
+  }
+  const selOps=all.filter(r=>_selCmpOps.has(String(r.id)));selOps.sort((a,b)=>a.addedDate>b.addedDate?1:-1);
+  const prodData={};
+  selOps.forEach(op=>(op.items||[]).forEach(p=>{if(!prodData[p.nameAr])prodData[p.nameAr]={cat:p.cat,ops:{}};if(!prodData[p.nameAr].ops[op.id])prodData[p.nameAr].ops[op.id]=0;prodData[p.nameAr].ops[op.id]+=(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0);}));
+  const totalU=Object.values(prodData).reduce((s,pd)=>s+selOps.reduce((ss,op)=>ss+(pd.ops[op.id]||0),0),0);
+  H("inv-content",'<button onclick="_selCmpOps=new Set();renderInvCompare()" style="background:rgba(4,42,43,.07);border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:700;margin-bottom:12px;">← تغيير الاختيار</button>'
+    +'<div class="k3" style="margin-bottom:14px;">'
+    +'<div class="kc kc-tl"><div class="kl">العمليات</div><div class="kv">'+_selCmpOps.size+'</div></div>'
+    +'<div class="kc kc-gn"><div class="kl">الوحدات</div><div class="kv">'+totalU+'</div></div>'
+    +'<div class="kc kc-or"><div class="kl">الأصناف</div><div class="kv">'+Object.keys(prodData).length+'</div></div></div>'
+    +'<div style="overflow-x:auto;border-radius:10px;"><table><thead><tr><th>المنتج</th>'
+    +selOps.map(op=>'<th style="text-align:center;"><div style="color:#e7dc83;">#'+(all.length-all.indexOf(op))+'</div><div style="font-size:.62rem;opacity:.7;">'+(op.site||"").replace("فرع ","").split(" - ")[0]+'</div></th>').join("")
+    +'<th style="text-align:center;">المجموع</th></tr></thead><tbody>'
+    +Object.entries(prodData).map(([nm,pd])=>{const rt=selOps.reduce((s,op)=>s+(pd.ops[op.id]||0),0);return'<tr><td style="font-weight:600;">'+nm+'</td>'+selOps.map(op=>'<td style="text-align:center;font-family:var(--nm);font-weight:700;">'+(pd.ops[op.id]||'<span style="color:#ddd;">—</span>')+'</td>').join("")+'<td style="text-align:center;font-family:var(--nm);font-weight:800;color:var(--tl);">'+rt+'</td></tr>';}).join("")
+    +'</tbody></table></div>');
+}
+function toggleCmpOp(id){const s=String(id);if(_selCmpOps.has(s))_selCmpOps.delete(s);else{if(_selCmpOps.size>=6){toast("الحد الأقصى 6 عمليات");return;}_selCmpOps.add(s);}renderInvCompare();}
+
+// ── Render: Needs ─────────────────────────────────────────────────
+function renderNeeds(){
+  const nds=JSON.parse(localStorage.getItem(K.nd)||"[]");
+  const checks=JSON.parse(localStorage.getItem(K.nc)||"{}");
+  const all=nds.flatMap(n=>(n.items||[]).map((it,i)=>({...it,site:n.site,key:n.id+"_"+i})));
+  const tc=all.reduce((s,it)=>s+pr(it.name)*(it.qty||1),0);
+  const dc=all.filter(it=>checks[it.key]).reduce((s,it)=>s+pr(it.name)*(it.qty||1),0);
+  S("nd-tc",tc.toFixed(0));S("nd-td",dc.toFixed(0));S("nd-tp",(tc-dc).toFixed(0));
+  const byBr={};all.forEach(it=>{if(!byBr[it.site])byBr[it.site]=[];byBr[it.site].push(it);});
+  H("nd-list",Object.entries(byBr).map(([site,items])=>{const sn=site.replace("فرع ","").split(" - ")[0];
+    return'<div style="background:#fafaf8;border-radius:10px;border:1px solid #e5e7e0;margin-bottom:10px;overflow:hidden;">'
+      +'<div style="background:var(--dk);padding:9px 14px;font-weight:800;color:var(--sg);font-size:.8rem;">🏪 '+sn+'</div>'
+      +items.map(it=>{const done=checks[it.key];return'<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid #f0f1ec;">'
+        +'<input type="checkbox" data-key="'+it.key+'" '+(done?"checked ":"")+'class="nd-chk" style="accent-color:var(--gn);width:17px;height:17px;"/>'
+        +'<div style="flex:1;"><div style="font-size:.83rem;font-weight:700;'+(done?"color:var(--gn);text-decoration:line-through;":"")+'">'+it.name+'</div>'
+        +'<div style="font-size:.68rem;color:#aaa;">×'+(it.qty||1)+'  ·  '+pr(it.name).toFixed(0)+' ريال</div></div>'
+        +'<span class="badge '+(done?"b-gn":"b-or")+'">'+(done?"✅ تم":"⏳ معلق")+'</span></div>';}).join("")+'</div>';
+  }).join("")||'<div class="empty-msg">لا توجد احتياجات</div>');
+  document.querySelectorAll(".nd-chk").forEach(chk=>{chk.addEventListener("change",function(){const ch=JSON.parse(localStorage.getItem(K.nc)||"{}");if(this.checked)ch[this.dataset.key]=1;else delete ch[this.dataset.key];localStorage.setItem(K.nc,JSON.stringify(ch));renderNeeds();});});
+}
+
+// ── Render: Balances ──────────────────────────────────────────────
+function setBalReg(r,btn){_balReg=r;document.querySelectorAll("#view-balances .ptabs .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderBalances();}
+function renderBalances(){
+  const bals=filterBals(_balReg).sort((a,b)=>b.addedDate>a.addedDate?1:-1);
+  const total=bals.reduce((s,b)=>s+(parseFloat(b.pos)||0),0);
+  const diff=bals.reduce((s,b)=>s+(parseFloat(b.diff)||0),0);
+  H("bal-kpis",'<div class="kc kc-tl"><div class="kl">إجمالي المبيعات</div><div class="kv">'+total.toFixed(0)+'</div><div class="ks">ريال</div></div>'
+    +'<div class="kc '+(diff>=0?"kc-gn":"kc-rd")+'"><div class="kl">الفرق الإجمالي</div><div class="kv">'+(diff>=0?"+":"")+diff.toFixed(0)+'</div><div class="ks">ريال</div></div>'
+    +'<div class="kc kc-or"><div class="kl">الفروع</div><div class="kv">'+(new Set(bals.map(b=>b.site))).size+'</div><div class="ks">فرع</div></div>'
+    +'<div class="kc kc-tl"><div class="kl">عدد الموازنات</div><div class="kv">'+bals.length+'</div><div class="ks">موازنة</div></div>');
+  H("bal-list",bals.length?'<table><thead><tr><th>الفرع</th><th>التاريخ</th><th>POS</th><th>نقدي</th><th>مكينة</th><th>الفرق</th></tr></thead><tbody>'
+    +bals.map(b=>'<tr><td style="font-weight:700;">'+(b.site||"").replace("فرع ","").split(" - ")[0]+'</td><td style="font-family:var(--nm);">'+fd(b.addedDate)+'</td><td style="font-family:var(--nm);color:var(--tl);font-weight:700;">'+(b.pos||0).toFixed(0)+'</td><td style="font-family:var(--nm);">'+(b.cash||0).toFixed(0)+'</td><td style="font-family:var(--nm);">'+(b.machine||0).toFixed(0)+'</td><td style="font-family:var(--nm);color:'+(parseFloat(b.diff||0)>=0?"var(--gn)":"var(--rd)")+';font-weight:800;">'+(parseFloat(b.diff||0)>=0?"+":"")+parseFloat(b.diff||0).toFixed(0)+'</td></tr>').join("")+'</tbody></table>':'<div class="empty-msg">لا موازنات</div>');
+}
+
+// ── Render: Goals ─────────────────────────────────────────────────
+function setGoalReg(r,btn){_goalReg=r;document.querySelectorAll("#view-goals .ptabs .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderGoals();}
+function renderGoals(){
+  const brs=getBrs(_goalReg);const goals=JSON.parse(localStorage.getItem(K.gl)||"{}");
+  H("goals-content",brs.map(br=>{const g=goals[br]||{};
+    return'<div style="background:#fff;border-radius:10px;border:1px solid #e5e7e0;padding:12px 14px;margin-bottom:10px;">'
+      +'<div style="font-weight:800;margin-bottom:8px;font-size:.82rem;">'+br+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">'
+      +'<div><label style="font-size:.68rem;color:#888;display:block;margin-bottom:3px;">🥪 ساندويش</label><input type="number" value="'+(g.sandwich||0)+'" data-br="'+br+'" data-cat="sandwich" onchange="updateGoal(this)" style="width:100%;border:1.5px solid #dde0d8;border-radius:7px;padding:6px;font-family:var(--nm);font-size:.85rem;text-align:center;"/></div>'
+      +'<div><label style="font-size:.68rem;color:#888;display:block;margin-bottom:3px;">🥤 عصائر</label><input type="number" value="'+(g.juices||0)+'" data-br="'+br+'" data-cat="juices" onchange="updateGoal(this)" style="width:100%;border:1.5px solid #dde0d8;border-radius:7px;padding:6px;font-family:var(--nm);font-size:.85rem;text-align:center;"/></div>'
+      +'<div><label style="font-size:.68rem;color:#888;display:block;margin-bottom:3px;">🥗 سلطات</label><input type="number" value="'+(g.salads||0)+'" data-br="'+br+'" data-cat="salads" onchange="updateGoal(this)" style="width:100%;border:1.5px solid #dde0d8;border-radius:7px;padding:6px;font-family:var(--nm);font-size:.85rem;text-align:center;"/></div>'
+      +'<div><label style="font-size:.68rem;color:#888;display:block;margin-bottom:3px;">🍮 حلى</label><input type="number" value="'+(g.desserts||0)+'" data-br="'+br+'" data-cat="desserts" onchange="updateGoal(this)" style="width:100%;border:1.5px solid #dde0d8;border-radius:7px;padding:6px;font-family:var(--nm);font-size:.85rem;text-align:center;"/></div>'
+      +'</div></div>';}).join(""));
+}
+function updateGoal(inp){const goals=JSON.parse(localStorage.getItem(K.gl)||"{}");const br=inp.dataset.br,cat=inp.dataset.cat;if(!goals[br])goals[br]={};goals[br][cat]=parseFloat(inp.value)||0;localStorage.setItem(K.gl,JSON.stringify(goals));}
+
+// ── Render: Prices ────────────────────────────────────────────────
+function renderPrices(){
+  const saved=JSON.parse(localStorage.getItem(K.pr)||"{}");
+  const allProds=[...PRODS.sandwich,...PRODS.juices,...PRODS.salads,...PRODS.desserts];
+  H("prices-list",'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +allProds.map(nm=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-radius:9px;border:1.5px solid #e5e7e0;">'
+      +'<span style="flex:1;font-size:.78rem;font-weight:700;">'+nm+'</span>'
+      +'<input type="number" step="0.01" value="'+(saved["cost_"+nm]||DP[nm]||0)+'" data-nm="'+nm+'" style="width:70px;border:1.5px solid #dde0d8;border-radius:7px;padding:5px;font-family:var(--nm);font-size:.82rem;text-align:center;"/>'
+      +'<span style="font-size:.68rem;color:#aaa;">ريال</span></div>').join("")+'</div>');
+}
+function savePrices(){
+  const saved={};document.querySelectorAll("#prices-list input").forEach(inp=>{saved["cost_"+inp.dataset.nm]=parseFloat(inp.value)||0;});
+  localStorage.setItem(K.pr,JSON.stringify(saved));toast("✅ تم حفظ الأسعار");
+}
+
+// ── Render: Employees ─────────────────────────────────────────────
+function renderEmployees(){
+  const emps=JSON.parse(localStorage.getItem(K.emp)||"null")||{"801":{name:"شعيب",region:"riyadh",pass:"3333"},"802":{name:"محمد",region:"qassim",pass:"4444"},"301":{name:"بسام",branch:"فرع الزكاة - الرياض",region:"riyadh",pass:"2222"},"201":{name:"وجدان",branch:"فرع التربية - القصيم",region:"qassim",pass:"1111"},"202":{name:"منيفة",branch:"فرع التربية - القصيم",region:"qassim",pass:"1112"},"401":{name:"هديل",branch:"فرع عنيزة - القصيم",region:"qassim",pass:"1113"},"501":{name:"ملاك",branch:"فرع الرس - القصيم",region:"qassim",pass:"1114"},"502":{name:"فاتن",branch:"فرع الرس - القصيم",region:"qassim",pass:"1115"},"601":{name:"نايف",branch:"فرع اتمال - القصيم",region:"qassim",pass:"1116"}};
+  H("emp-list",'<table><thead><tr><th>الرقم</th><th>الاسم</th><th>كلمة المرور</th><th>الفرع / المنطقة</th><th>الدور</th></tr></thead><tbody>'
+    +Object.entries(emps).map(([id,u])=>'<tr><td style="font-family:var(--nm);font-weight:800;color:var(--tl);">'+id+'</td><td style="font-weight:700;">'+u.name+'</td><td style="font-family:var(--nm);color:#888;">'+u.pass+'</td><td>'+(u.branch||u.region||"—")+'</td><td>'+(u.branch?"كاشير":"مشرف")+'</td></tr>').join("")
+    +'</tbody></table>');
+}
+
+// ── Export All ────────────────────────────────────────────────────
+function exportAll(type){
+  const wb=XLSX.utils.book_new();
+  if(type==="balance"){const b=filterBals("all");const ws_=XLSX.utils.aoa_to_sheet([["الفرع","التاريخ","POS","نقدي","مكينة","الفرق"],...b.map(x=>[x.site,x.addedDate,x.pos||0,x.cash||0,x.machine||0,x.diff||0])]);XLSX.utils.book_append_sheet(wb,ws_,"الموازنة");}
+  if(type==="expiry"){const e=JSON.parse(localStorage.getItem(K.exp)||"[]").flatMap(r=>(r.items||[]).map(it=>({...it,site:r.site,addedDate:r.addedDate})));const ws_=XLSX.utils.aoa_to_sheet([["الفرع","التاريخ","المنتج","الكمية","الصلاحية"],...e.map(x=>[x.site,x.addedDate,x.nameAr,x.qty,x.exp])]);XLSX.utils.book_append_sheet(wb,ws_,"الاكسبايري");}
+  if(type==="inventory"){const inv=JSON.parse(localStorage.getItem(K.inv)||"[]");const rows=[["الفرع","التاريخ","المنتج","كمية①","صلاحية①","كمية②","صلاحية②"]];inv.forEach(op=>(op.items||[]).forEach(p=>rows.push([op.site,op.addedDate,p.nameAr,p.batch1?.qty||0,p.batch1?.exp||"",p.batch2?.qty||0,p.batch2?.exp||""])));const ws_=XLSX.utils.aoa_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws_,"الجرد");}
+  if(type==="needs"){const nd=JSON.parse(localStorage.getItem(K.nd)||"[]").flatMap(n=>(n.items||[]).map(it=>({...it,site:n.site})));const ws_=XLSX.utils.aoa_to_sheet([["الفرع","الصنف","الكمية"],...nd.map(x=>[x.site,x.name,x.qty||1])]);XLSX.utils.book_append_sheet(wb,ws_,"الاحتياجات");}
+  XLSX.writeFile(wb,type+"_"+td()+".xlsx");toast("📥 تم التصدير");
+}
+
+window._rerender=function(){if(CU&&_currentView)showView(_currentView);}
+</script>
+</body>
+</html>
