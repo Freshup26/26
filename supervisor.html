@@ -485,8 +485,7 @@ window.FU_SYNC={
         <div id="exp-cmp-tbl" style="overflow-x:auto;margin-bottom:14px;"></div>
       </div>
       <!-- Operations list section -->
-      <div id="exp-ops-section">
-      <div class="k3">
+      <div id="exp-ops-section"><div class="k3">
         <div class="kc kc-rd"><div class="kl">منتجات منتهية</div><div class="kv" id="et" style="font-size:1.05rem;">—</div><div style="font-size:.85rem;font-weight:700;color:var(--or);" id="et-qty">—</div><div class="ks" id="et-s">—</div></div>
         <div class="kc kc-or"><div class="kl">تكلفة الهدر</div><div class="kv" id="ec" style="font-size:1.1rem;">—</div><div class="ks">إجمالي المنتهية</div></div>
         <div class="kc kc-tl"><div class="kl">نسبة من المبيعات</div><div class="kv" id="ep">—</div><div class="ks">%</div></div>
@@ -527,8 +526,7 @@ window.FU_SYNC={
         <div id="inv-cmp-kpis" style="margin-bottom:13px;"></div>
         <div id="inv-cmp-tbl" style="overflow-x:auto;"></div>
       </div>
-      <div id="inv-ops-section">
-      <div class="card"><div class="ch"><div class="ct">📦 تفاصيل الجرد</div><button class="ca" onclick="doExport()">📥</button></div>
+      <div id="inv-ops-section"><div class="card"><div class="ch"><div class="ct">📦 تفاصيل الجرد</div><button class="ca" onclick="doExport()">📥</button></div>
         <div class="tw" id="inv-prod-tbl" style="overflow-x:auto;"></div>
       </div>
     </div>
@@ -624,6 +622,7 @@ window.FU_SYNC={
 </div>
 <div id="toast"></div>
 <script>
+// Safe T() f
 // Safe T() fallback (non-bilingual version)
 function T(k){var m={"toast_saved":"تم الحفظ","toast_refresh":"تم التحديث","confirm_logout":"تأكيد الخروج؟","no_data":"لا توجد بيانات","no_sales":"لا توجد مبيعات","hist_expiry":"اكسبايري","hist_inventory":"جرد","hist_needs":"احتياجات","hist_balance":"موازنة","status_morning":"صباحي","status_evening":"مسائي","cat_sandwich":"ساندويش","cat_juices":"عصائر","cat_salads":"سلطات","from_goal":"من","cur":"ريال","product_lbl":"منتج"};return m[k]||k;}
 
@@ -721,38 +720,39 @@ function sv(v,btn){
   var renderFns={
     dash:function(){renderDash();},
     sales:function(){renderSales();},
-    goals:function(){S("cmp-lbl",wkL(wkOff));renderGoals();},
+    goals:function(){S("cmp-lbl",wkL(wkOff));if(typeof renderGoals==="function")renderGoals();},
     expiry:function(){
-      var ec=document.getElementById("exp-compare-section");
-      var eo=document.getElementById("exp-ops-section");
-      if(ec)ec.style.display="none";
-      if(eo)eo.style.display="";
+      ["exp-compare-section"].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display="none";});
+      ["exp-ops-section"].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display="";});
       renderExp();
     },
     inventory:function(){
-      var oc=document.getElementById("inv-compare-section");
-      var oo=document.getElementById("inv-ops-section");
-      if(oc)oc.style.display="none";
-      if(oo)oo.style.display="";
-      var ob=document.getElementById("inv-tab-ops");
-      if(ob){document.querySelectorAll("#view-inventory .ptabs .ptab").forEach(b=>b.classList.remove("active"));ob.classList.add("active");}
-      selInvId=null;renderInv();
+      ["inv-compare-section"].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display="none";});
+      ["inv-ops-section"].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display="";});
+      selInvId=null;
+      renderInv();
     },
-    needs:function(){renderNeeds();},
-    balances:function(){renderBals();},
-    history:function(){renderHist();}
+    needs:function(){if(typeof renderNeeds==="function")renderNeeds();},
+    balances:function(){if(typeof renderBals==="function")renderBals();},
+    history:function(){if(typeof renderHist==="function")renderHist();}
   };
   if(renderFns[v]){
     try{
       renderFns[v]();
+      // Safety: check if any content was rendered
+      setTimeout(function(){
+        var el=document.getElementById("view-"+v);
+        if(el&&el.textContent.trim().length<5){
+          var inner=el.innerHTML;
+          if(inner.indexOf("card")<0&&inner.indexOf("fcard")<0&&inner.indexOf("kc")<0){
+            el.innerHTML+='<div style="padding:24px;text-align:center;color:#aaa;font-size:.9rem;">جاري التحميل...<br><small>إذا استمرت المشكلة، أعد تحميل الصفحة</small></div>';
+          }
+        }
+      },500);
     }catch(err){
-      console.error("sv render error ["+v+"]:",err);
-      var errHtml="<div style=\"padding:24px;margin:16px;background:#fff0f0;border-radius:12px;border:2px solid #c0392b;\">"
-        +"<div style=\"font-size:.9rem;font-weight:800;color:#c0392b;margin-bottom:8px;\">⚠️ خطأ في تحميل القسم: "+v+"</div>"
-        +"<div style=\"font-size:.78rem;color:#666;font-family:monospace;\">"+err.message+"</div>"
-        +"<div style=\"font-size:.7rem;color:#aaa;margin-top:6px;\">"+( err.stack?err.stack.split("\n")[1]||"":"")+"</div>"
-        +"</div>";
-      vEl.innerHTML=errHtml;
+      console.error("sv error ["+v+"]:",err);
+      var el=document.getElementById("view-"+v);
+      if(el)el.innerHTML='<div style="padding:24px;margin:16px;background:#fff0f0;border-radius:12px;border:2px solid #c0392b;"><b style="color:#c0392b;">⚠️ خطأ: '+v+'</b><br><span style="font-size:.75rem;font-family:monospace;">'+err.message+'</span></div>';
     }
   }
   window.scrollTo(0,0);
@@ -2064,6 +2064,5 @@ function doExport(){
   toast("لا توجد بيانات للتصدير في هذا القسم");
 }
 
-</script>
-</body>
+dy>
 </html>
