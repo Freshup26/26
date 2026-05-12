@@ -480,7 +480,7 @@ function renderInvCompare(all){
   const prodData={};
   selOps.forEach(op=>(op.items||[]).forEach(p=>{if(!prodData[p.nameAr])prodData[p.nameAr]={cat:p.cat,ops:{}};if(!prodData[p.nameAr].ops[op.id])prodData[p.nameAr].ops[op.id]=0;prodData[p.nameAr].ops[op.id]+=(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0);}));
   const totalU=Object.values(prodData).reduce((s,pd)=>s+selOps.reduce((ss,op)=>ss+(pd.ops[op.id]||0),0),0);
-  H("inv-content",'<button onclick="_selCmpOps=new Set();renderInvCompare()" style="background:rgba(4,42,43,.07);border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:700;margin-bottom:12px;">← تغيير الاختيار</button>'
+  H("inv-cmp-result-area",'<button onclick="_selCmpOps=new Set();renderInvCompare()" style="background:rgba(4,42,43,.07);border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:700;margin-bottom:12px;">← تغيير الاختيار</button>'
     +'<div class="k3" style="margin-bottom:14px;">'
     +'<div class="kc kc-tl"><div class="kl">العمليات</div><div class="kv">'+_selCmpOps.size+'</div></div>'
     +'<div class="kc kc-gn"><div class="kl">الوحدات</div><div class="kv">'+totalU+'</div></div>'
@@ -491,7 +491,43 @@ function renderInvCompare(all){
     +Object.entries(prodData).map(([nm,pd])=>{const rt=selOps.reduce((s,op)=>s+(pd.ops[op.id]||0),0);return'<tr><td style="font-weight:600;">'+nm+'</td>'+selOps.map(op=>'<td style="text-align:center;font-family:var(--nm);font-weight:700;">'+(pd.ops[op.id]||'<span style="color:#ddd;">—</span>')+'</td>').join("")+'<td style="text-align:center;font-family:var(--nm);font-weight:800;color:var(--tl);">'+rt+'</td></tr>';}).join("")
     +'</tbody></table></div>');
 }
-function toggleCmpOp(id){const s=String(id);if(_selCmpOps.has(s))_selCmpOps.delete(s);else{if(_selCmpOps.size>=6){toast("الحد الأقصى 6 عمليات");return;}_selCmpOps.add(s);}renderInvCompare();}
+function doInvCompare(){renderInvCompare();}
+function toggleCmpOp(id){
+  const s=String(id);
+  if(_selCmpOps.has(s)){
+    _selCmpOps.delete(s);
+  } else {
+    if(_selCmpOps.size>=6){toast("الحد الأقصى 6 عمليات");return;}
+    _selCmpOps.add(s);
+  }
+  // Just rebuild the picker with updated checkboxes — don't start comparison yet
+  rebuildInvPicker();
+  // Update the compare button label
+  const btn=document.getElementById("inv-cmp-go");
+  if(btn)btn.textContent=_selCmpOps.size>=2?"🔍 مقارنة ("+_selCmpOps.size+" عمليات)":"🔍 مقارنة";
+}
+
+function rebuildInvPicker(){
+  const all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort(function(a,b){return b.addedDate>a.addedDate?1:-1;});
+  const allOps=all.sort(function(a,b){return b.addedDate>a.addedDate?1:-1;});
+  const container=document.getElementById("inv-picker-list");
+  if(!container)return;
+  container.innerHTML=all.map(function(op,i){
+    const tot=(op.items||[]).reduce(function(s,p){return s+(parseInt(p.batch1&&p.batch1.qty)||0)+(parseInt(p.batch2&&p.batch2.qty)||0);},0);
+    const sn=(op.site||"").replace("فرع ","").split(" - ")[0];
+    const chk=_selCmpOps.has(String(op.id));
+    const dn=DAYS[new Date(op.addedDate||"").getDay()]||"";
+    return'<div data-oid="'+op.id+'" onclick="toggleCmpOp(this.dataset.oid)" style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:9px;cursor:pointer;margin-bottom:5px;background:'+(chk?"rgba(2,82,83,.1)":"#fafaf8")+';border:1.5px solid '+(chk?"rgba(2,82,83,.3)":"#e5e7e0")+';">'
+      +'<input type="checkbox" '+(chk?"checked ":"")+'style="accent-color:var(--tl);width:16px;height:16px;pointer-events:none;"/>'
+      +'<div style="background:'+(chk?"var(--tl)":"rgba(4,42,43,.1)")+';color:'+(chk?"#fff":"var(--tl)")+';border-radius:6px;padding:3px 9px;font-family:var(--nm);font-size:.75rem;font-weight:900;">#'+(all.length-i)+'</div>'
+      +'<div style="flex:1;">'
+      +'<div style="font-size:.8rem;font-weight:700;">'+sn+'</div>'
+      +'<div style="font-size:.68rem;color:#888;">'+dn+' '+fd(op.addedDate)+'</div>'
+      +'</div>'
+      +'<div style="font-family:var(--nm);font-size:.85rem;font-weight:800;color:var(--tl);">'+tot+' وحدة</div>'
+      +'</div>';
+  }).join("")||'<div class="empty-msg">لا توجد عمليات</div>';
+}
 
 // ── Render: Needs ─────────────────────────────────────────────────
 function renderNeeds(){

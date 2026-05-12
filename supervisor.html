@@ -16,7 +16,7 @@ var FIREBASE_CONFIG={
   messagingSenderId:"987696801684",
   appId:"1:987696801684:web:c1544fa7baaddcaf341181"
 };
-var SYNC_KEYS=["fu_balance","fu_inventory","fu_entries","fu_needs","fu_goals","fu_prices","fu_nc","fu_employees"];
+var SYNC_KEYS=["fu_balance","fu_inventory","fu_entries","fu_needs","fu_goals","fu_prices","fu_nc","fu_employees","fu_col_notes"];
 var LOCAL_ONLY=["fu_lang","fu_credentials"];
 var FU_DB=null,FU_READY=false,FU_CACHE={},_wT={},_rT=null,_pending={};
 window._realLS=window.localStorage;
@@ -166,6 +166,7 @@ td{padding:8px 12px;border-top:1px solid rgba(4,42,43,.05);}
   <button class="sni" onclick="showView('needs',this)"><span class="ni">🛒</span><span>الاحتياجات</span><span class="snbg or" id="nb-nd"></span></button>
   <button class="sni" onclick="showView('balances',this)"><span class="ni">💰</span><span>موازنات الفروع</span></button>
   <button class="sni" onclick="showView('history',this)"><span class="ni">📋</span><span>سجل العمليات</span></button>
+  <button class="sni" onclick="showView('collect',this)"><span class="ni">💵</span><span>استلام الكاش</span></button>
   <div class="sb-sec">الإدخال</div>
   <button class="sni" onclick="showView('drv',this)"><span class="ni">🚗</span><span>تسجيل اكسبايري</span></button>
   <button class="sni" onclick="showView('einv',this)"><span class="ni">📝</span><span>إدخال جرد</span></button>
@@ -361,9 +362,9 @@ const CATS=[{k:"sandwich",l:"ساندويش",i:"🥪"},{k:"juices",l:"عصائر
 const BR_R=["فرع الزكاة - الرياض","CCC 127","CCC 146","CCC 150","MUN 124","MUN 126","MUN 140","Red Sea 272","Red Sea 123","SLC 144","SLC 128","EJADA 130","TNFZ 141","ELM 142"];
 const BR_Q=["فرع التربية - القصيم","فرع عنيزة - القصيم","فرع الرس - القصيم","فرع اتمال - القصيم","ماكينة 121","ماكينة 153","ماكينة 143","ماكينة 129","ماكينة 149","ماكينة 145"];
 const DP={"بوريتو دجاج":7.9,"فيينا دجاج مشوي":6.5,"كلوب دجاج رانش":8.1,"باجيت دجاج رانش":7.9,"اونيون دجاج سبايسي":7.4,"باجيت دجاج فاهيتا":7.9,"باجيت دجاج تندوري":8.2,"شيباتا دجاج باربكيو":8.8,"فوكاتشا جبن حلومي كبير":9.5,"فوكاتشا جبن حلومي صغير":7.2,"بيجلز جبن تيركي":8.5,"باجيت اربع اجبان":7.5,"بيجلز جبن حلومي":8.0,"شيباتا تونة وذرة":7.4,"ليمون بالنعناع":3.5,"مانجو":4.0,"برتقال":3.5,"رمان":4.5,"سلطة فواكه":5.5,"سلطة سيزر":5.0,"كنافة":5.0,"أم علي":4.5,"مهلبية":4.0,"بسبوسة":3.8,"كريم برولي":5.5,"تشيز كيك":6.0,"براونيز":4.5};
-const K={bal:"fu_balance",inv:"fu_inventory",exp:"fu_entries",nd:"fu_needs",gl:"fu_goals",pr:"fu_prices",nc:"fu_nc"};
+const K={bal:"fu_balance",inv:"fu_inventory",exp:"fu_entries",nd:"fu_needs",gl:"fu_goals",pr:"fu_prices",nc:"fu_nc",col:"fu_col_notes"};
 const DAYS=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-const VT={dash:"لوحة التحكم",sales:"تقرير المبيعات",goals:"هدف المبيعات",expiry:"الاكسبايري",inventory:"الجرد",needs:"الاحتياجات",balances:"موازنات الفروع",history:"سجل العمليات",drv:"تسجيل اكسبايري",einv:"إدخال جرد",ends:"إدخال احتياجات"};
+const VT={dash:"لوحة التحكم",sales:"تقرير المبيعات",goals:"هدف المبيعات",expiry:"الاكسبايري",inventory:"الجرد",needs:"الاحتياجات",balances:"موازنات الفروع",history:"سجل العمليات",collect:"استلام الكاش",drv:"تسجيل اكسبايري",einv:"إدخال جرد",ends:"إدخال احتياجات"};
 
 let CU=null,REG="riyadh",_currentView="dash";
 let _expFilter="all",_histFilter="all",_invMode="list",_selInvId=null,_selCmpOps=new Set();
@@ -615,9 +616,10 @@ function renderInvCompare(){
   const CAT_EN_AR={"ساندويش":"sandwich","عصائر":"juices","سلطات":"salads","حلى طازجة":"desserts"};
   const prodData={};
   selOps.forEach(op=>(op.items||[]).forEach(p=>{
-    const catL=CATS.find(c=>c.k===p.cat)?.l||p.cat;
+    const catObj=CATS.find(c=>c.k===p.cat);
+    const catL=catObj?catObj.l:(p.cat||"أخرى");
     if(selCat!=="all"&&catL!==selCat)return;
-    if(!prodData[p.nameAr])prodData[p.nameAr]={cat:catL,ops:{}};
+    if(!prodData[p.nameAr])prodData[p.nameAr]={cat:p.cat||"sandwich",ops:{}};
     if(!prodData[p.nameAr].ops[op.id])prodData[p.nameAr].ops[op.id]=0;
     prodData[p.nameAr].ops[op.id]+=(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0);
   }));
@@ -738,7 +740,7 @@ function updBadges(){
 let _drvData={};
 function setupEntryForms(){
   const brs=getBrs();
-  ["drv-site","einv-site","ends-site"].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML='<option value="">-- اختر --</option>'+brs.map(b=>'<option>'+b+'</option>').join("");});
+  ["drv-site","einv-site","ends-site","col-site"].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML='<option value="">-- اختر --</option>'+brs.map(b=>'<option>'+b+'</option>').join("");});
   buildDrvCats();buildEinvCats();buildEndsItems();
 }
 function buildDrvCats(){
@@ -824,6 +826,104 @@ function saveEnds(){
 }
 
 // ── Init ──────────────────────────────────────────────────────────
+
+// ── Collect: Cash Receipt ────────────────────────────────────────
+let _colFilter="week";
+
+function setColFilter(f,btn){
+  _colFilter=f;
+  document.querySelectorAll("#view-collect .ptab").forEach(b=>b.classList.remove("active"));
+  if(btn)btn.classList.add("active");
+  renderCollect();
+}
+
+function renderCollect(){
+  // Populate site select
+  const siteEl=document.getElementById("col-site");
+  if(siteEl&&siteEl.options.length<2){
+    const brs=getBrs();
+    siteEl.innerHTML='<option value="">-- اختر الفرع --</option>'+brs.map(b=>'<option>'+b+'</option>').join("");
+  }
+  // Set date default
+  const dateEl=document.getElementById("col-date");
+  if(dateEl&&!dateEl.value)dateEl.value=td();
+
+  // Load records
+  const all=JSON.parse(localStorage.getItem(K.col)||"[]");
+  // Filter
+  let recs=all.filter(r=>r.supervisor===CU.id||r.region===REG);
+  if(_colFilter==="week")recs=recs.filter(r=>inWk(r.date));
+  if(_colFilter==="month")recs=recs.filter(r=>inMo(r.date));
+  recs.sort((a,b)=>b.date>a.date?1:-1);
+
+  // KPIs
+  const wkRecs=all.filter(r=>(r.supervisor===CU.id||r.region===REG)&&inWk(r.date));
+  const wkTotal=wkRecs.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const wkBrs=new Set(wkRecs.map(r=>r.site));
+  const allBrs=getBrs();
+  S("col-total",wkTotal.toFixed(0));
+  S("col-count",wkBrs.size);
+  S("col-remain",allBrs.length-wkBrs.size);
+
+  // Table
+  if(!recs.length){H("col-list",'<div class="empty-msg">لا توجد عمليات استلام</div>');return;}
+  H("col-list",'<table>'
+    +'<thead><tr><th>#</th><th>التاريخ</th><th>الفرع</th><th>المبلغ</th><th>ملاحظة</th><th>إجراء</th></tr></thead>'
+    +'<tbody>'
+    +recs.map((r,i)=>'<tr>'
+      +'<td style="font-family:var(--nm);font-weight:800;color:var(--tl);">'+(recs.length-i)+'</td>'
+      +'<td style="font-family:var(--nm);">'+fd(r.date)+'</td>'
+      +'<td style="font-weight:700;">'+(r.site||"").replace("فرع ","").split(" - ")[0]+'</td>'
+      +'<td style="font-family:var(--nm);font-weight:900;color:var(--gn);font-size:.92rem;">'+(parseFloat(r.amount)||0).toFixed(0)+' ريال</td>'
+      +'<td style="color:#888;font-size:.78rem;">'+(r.note||"—")+'</td>'
+      +'<td><button data-rid="'+r.id+'" onclick="deleteCol(this.dataset.rid)" style="background:rgba(192,57,43,.1);color:var(--rd);border:none;border-radius:6px;padding:4px 9px;font-size:.72rem;cursor:pointer;font-family:var(--fn);">حذف</button></td>'
+      +'</tr>').join("")
+    +'</tbody>'
+    +'<tfoot><tr style="background:rgba(2,82,83,.07);border-top:2px solid rgba(2,82,83,.15);">'
+    +'<td colspan="3" style="padding:9px 12px;font-weight:900;color:var(--tl);">الإجمالي</td>'
+    +'<td style="padding:9px 12px;font-family:var(--nm);font-weight:900;color:var(--gn);font-size:.95rem;">'+recs.reduce((s,r)=>s+(parseFloat(r.amount)||0),0).toFixed(0)+' ريال</td>'
+    +'<td colspan="2"></td></tr></tfoot>'
+    +'</table>');
+}
+
+function saveCollection(){
+  const site=document.getElementById("col-site").value;
+  const amount=parseFloat(document.getElementById("col-amount").value||0);
+  const date=document.getElementById("col-date").value||td();
+  const note=(document.getElementById("col-note").value||"").trim();
+  if(!site){toast("⚠️ اختر الفرع");return;}
+  if(!amount||amount<=0){toast("⚠️ أدخل المبلغ");return;}
+  const arr=JSON.parse(localStorage.getItem(K.col)||"[]");
+  arr.push({id:Date.now(),site,amount,date,note,supervisor:CU.id,supervisorName:CU.name,region:REG});
+  localStorage.setItem(K.col,JSON.stringify(arr));
+  document.getElementById("col-amount").value="";
+  document.getElementById("col-note").value="";
+  toast("✅ تم تسجيل الاستلام — "+amount.toFixed(0)+" ريال من "+site.replace("فرع ","").split(" - ")[0]);
+  renderCollect();
+}
+
+function deleteCol(id){
+  if(!confirm("حذف هذا الاستلام؟"))return;
+  const arr=JSON.parse(localStorage.getItem(K.col)||"[]").filter(r=>String(r.id)!==String(id));
+  localStorage.setItem(K.col,JSON.stringify(arr));
+  renderCollect();
+}
+
+function exportCollect(){
+  const all=JSON.parse(localStorage.getItem(K.col)||"[]").filter(r=>r.supervisor===CU.id||r.region===REG);
+  all.sort((a,b)=>b.date>a.date?1:-1);
+  const wb=XLSX.utils.book_new();
+  const ws_=XLSX.utils.aoa_to_sheet([
+    ["التاريخ","الفرع","المبلغ (ريال)","المشرف","ملاحظة"],
+    ...all.map(r=>[r.date,(r.site||"").replace("فرع ","").split(" - ")[0],parseFloat(r.amount)||0,r.supervisorName||"",r.note||""])
+  ]);
+  ws_["!cols"]=[{wch:14},{wch:24},{wch:14},{wch:14},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws_,"استلام الكاش");
+  XLSX.writeFile(wb,"استلام_كاش_"+td()+".xlsx");
+  toast("📥 تم التصدير");
+}
+
+
 window._rerender=function(){if(CU&&_currentView)showView(_currentView);}
 </script>
 </body>
