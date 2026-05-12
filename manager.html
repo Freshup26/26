@@ -922,10 +922,10 @@ function shiftGoalWk(d){
   renderGoalInputs();
 }
 function setRankPeriod(p,btn){rankPeriod=p;document.getElementById("rk-wk").classList.toggle("active",p==="week");document.getElementById("rk-mo").classList.toggle("active",p==="month");renderRankList();}
-function updBadges(){
+function updBadges(){try{
   const ex=getExp(ws()).filter(e=>(es(e.exp).d||0)<0).length;
   S("nb-exp",ex||"");
-}
+}catch(e){console.error("badges:",e);}}
 
 // ═══ DASHBOARD ═══════════════════════════════════════════════════════════════
 function renderDash(){

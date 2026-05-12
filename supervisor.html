@@ -722,8 +722,22 @@ function sv(v,btn){
     dash:function(){renderDash();},
     sales:function(){renderSales();},
     goals:function(){S("cmp-lbl",wkL(wkOff));renderGoals();},
-    expiry:function(){renderExp();},
-    inventory:function(){renderInv();},
+    expiry:function(){
+      var ec=document.getElementById("exp-compare-section");
+      var eo=document.getElementById("exp-ops-section");
+      if(ec)ec.style.display="none";
+      if(eo)eo.style.display="";
+      renderExp();
+    },
+    inventory:function(){
+      var oc=document.getElementById("inv-compare-section");
+      var oo=document.getElementById("inv-ops-section");
+      if(oc)oc.style.display="none";
+      if(oo)oo.style.display="";
+      var ob=document.getElementById("inv-tab-ops");
+      if(ob){document.querySelectorAll("#view-inventory .ptabs .ptab").forEach(b=>b.classList.remove("active"));ob.classList.add("active");}
+      selInvId=null;renderInv();
+    },
     needs:function(){renderNeeds();},
     balances:function(){renderBals();},
     history:function(){renderHist();}
@@ -823,12 +837,12 @@ function nTab(t,btn){nTab2=t;document.querySelectorAll("#view-needs .ptab").forE
 function hFilt(t,btn){hFil=t;document.querySelectorAll("#view-history .ptab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");renderHist();}
 function shiftWk(d){wkOff+=d;S("cmp-lbl",wkL(wkOff));renderGoals();}
 
-function updBadges(){
+function updBadges(){try{
   const ex=getExp(ws()).filter(e=>es(e.exp).d<=0).length;
   S("nb-exp",ex||"");
   const nd=fR(JSON.parse(localStorage.getItem(K.nd)||"[]")).filter(n=>inWk(n.addedDate,ws())&&!n.fulfilled).length;
   S("nb-nd",nd||"");
-}
+}catch(e){console.error("badges:",e);}}
 function popSites(){
   const brs=getBrs();
   ["drv-site","einv-site","ends-site"].forEach(id=>{
