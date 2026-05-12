@@ -463,34 +463,103 @@ function renderInvDetail(op,all){
     }).join(""));
 }
 function renderInvCompare(all){
-  if(!all)all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort((a,b)=>b.addedDate>a.addedDate?1:-1);
+  if(!all) all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort(function(a,b){return b.addedDate>a.addedDate?1:-1;});
+  // Build picker + empty result area
+  H("inv-content",
+    '<div class="fcard" style="margin-bottom:13px;">'
+    +'<div style="font-weight:800;font-size:.82rem;color:var(--tl);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">'
+    +'<span>📊 اختر العمليات للمقارنة</span>'
+    +'<div style="display:flex;gap:7px;">'
+    +'<span id="inv-sel-cnt" style="font-size:.74rem;color:#888;font-weight:600;margin:auto 0;">'+(_selCmpOps.size?"✅ "+_selCmpOps.size+" مختارة":"اختر 2 أو أكثر")+'</span>'
+    +'<button onclick="doInvCompare()" class="btn-sv" style="font-size:.76rem;padding:5px 14px;">🔍 مقارنة</button>'
+    +'<button onclick="_selCmpOps=new Set();renderInvCompare()" style="background:rgba(192,57,43,.1);color:var(--rd);border:none;border-radius:7px;padding:5px 10px;font-size:.74rem;cursor:pointer;font-family:var(--fn);">✖ مسح</button>'
+    +'</div></div>'
+    +'<div id="inv-picker-list" style="max-height:300px;overflow-y:auto;"></div>'
+    +'</div>'
+    +'<div id="inv-cmp-out"></div>'
+  );
+  // Fill picker
+  rebuildInvPicker(all);
+}
+
+function doInvCompare(){
+  const all=JSON.parse(localStorage.getItem(K.inv)||"[]").sort(function(a,b){return b.addedDate>a.addedDate?1:-1;});
+  const out=document.getElementById("inv-cmp-out");
+  if(!out)return;
   if(_selCmpOps.size<2){
-    H("inv-content",'<div class="fcard"><div class="fct">📊 اختر عمليتين أو أكثر للمقارنة</div>'
-      +all.map((op,i)=>{const tot=(op.items||[]).reduce((s,p)=>s+(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0),0);const chk=_selCmpOps.has(String(op.id));const sn=(op.site||"").replace("فرع ","").split(" - ")[0];
-        return'<div data-oid="'+op.id+'" onclick="toggleCmpOp(this.dataset.oid)" style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:9px;cursor:pointer;margin-bottom:5px;background:'+(chk?"rgba(2,82,83,.1)":"#fafaf8")+';border:1.5px solid '+(chk?"rgba(2,82,83,.3)":"#e5e7e0")+';">'
-          +'<input type="checkbox" '+(chk?"checked ":"")+'style="accent-color:var(--tl);width:16px;height:16px;pointer-events:none;"/>'
-          +'<div style="background:'+(chk?"var(--tl)":"rgba(4,42,43,.1)")+';color:'+(chk?"#fff":"var(--tl)")+';border-radius:6px;padding:3px 9px;font-family:var(--nm);font-size:.75rem;font-weight:900;">#'+(all.length-i)+'</div>'
-          +'<div style="flex:1;"><div style="font-size:.8rem;font-weight:700;">'+sn+'</div><div style="font-size:.68rem;color:#888;">'+dn(op.addedDate)+' '+fd(op.addedDate)+'</div></div>'
-          +'<div style="font-family:var(--nm);font-size:.85rem;font-weight:800;color:var(--tl);">'+tot+' وحدة</div></div>';
-      }).join("")
-      +'<button class="btn-sv" onclick="renderInvCompare()" style="margin-top:10px;">🔍 مقارنة</button></div>');
+    out.innerHTML='<div class="empty-msg">اختر عمليتين أو أكثر ثم اضغط مقارنة</div>';
     return;
   }
-  const selOps=all.filter(r=>_selCmpOps.has(String(r.id)));selOps.sort((a,b)=>a.addedDate>b.addedDate?1:-1);
+  const selOps=all.filter(function(r){return _selCmpOps.has(String(r.id));});
+  selOps.sort(function(a,b){return a.addedDate>b.addedDate?1:-1;});
+  const allOps=all;
+  function opNum(op){var i=allOps.findIndex(function(o){return String(o.id)===String(op.id);});return i>=0?allOps.length-i:"?";}
+
   const prodData={};
-  selOps.forEach(op=>(op.items||[]).forEach(p=>{if(!prodData[p.nameAr])prodData[p.nameAr]={cat:p.cat,ops:{}};if(!prodData[p.nameAr].ops[op.id])prodData[p.nameAr].ops[op.id]=0;prodData[p.nameAr].ops[op.id]+=(parseInt(p.batch1?.qty)||0)+(parseInt(p.batch2?.qty)||0);}));
-  const totalU=Object.values(prodData).reduce((s,pd)=>s+selOps.reduce((ss,op)=>ss+(pd.ops[op.id]||0),0),0);
-  H("inv-cmp-result-area",'<button onclick="_selCmpOps=new Set();renderInvCompare()" style="background:rgba(4,42,43,.07);border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:var(--fn);font-size:.78rem;font-weight:700;margin-bottom:12px;">← تغيير الاختيار</button>'
-    +'<div class="k3" style="margin-bottom:14px;">'
-    +'<div class="kc kc-tl"><div class="kl">العمليات</div><div class="kv">'+_selCmpOps.size+'</div></div>'
-    +'<div class="kc kc-gn"><div class="kl">الوحدات</div><div class="kv">'+totalU+'</div></div>'
-    +'<div class="kc kc-or"><div class="kl">الأصناف</div><div class="kv">'+Object.keys(prodData).length+'</div></div></div>'
-    +'<div style="overflow-x:auto;border-radius:10px;"><table><thead><tr><th>المنتج</th>'
-    +selOps.map(op=>'<th style="text-align:center;"><div style="color:#e7dc83;">#'+(all.length-all.indexOf(op))+'</div><div style="font-size:.62rem;opacity:.7;">'+(op.site||"").replace("فرع ","").split(" - ")[0]+'</div></th>').join("")
-    +'<th style="text-align:center;">المجموع</th></tr></thead><tbody>'
-    +Object.entries(prodData).map(([nm,pd])=>{const rt=selOps.reduce((s,op)=>s+(pd.ops[op.id]||0),0);return'<tr><td style="font-weight:600;">'+nm+'</td>'+selOps.map(op=>'<td style="text-align:center;font-family:var(--nm);font-weight:700;">'+(pd.ops[op.id]||'<span style="color:#ddd;">—</span>')+'</td>').join("")+'<td style="text-align:center;font-family:var(--nm);font-weight:800;color:var(--tl);">'+rt+'</td></tr>';}).join("")
-    +'</tbody></table></div>');
+  selOps.forEach(function(op){(op.items||[]).forEach(function(p){
+    const catObj=CATS.find(function(c){return c.k===p.cat;});
+    if(!prodData[p.nameAr])prodData[p.nameAr]={cat:p.cat||"sandwich",ops:{}};
+    if(!prodData[p.nameAr].ops[op.id])prodData[p.nameAr].ops[op.id]=0;
+    prodData[p.nameAr].ops[op.id]+=(parseInt(p.batch1&&p.batch1.qty)||0)+(parseInt(p.batch2&&p.batch2.qty)||0);
+  });});
+
+  const totalU=Object.values(prodData).reduce(function(s,pd){return s+selOps.reduce(function(ss,op){return ss+(pd.ops[op.id]||0);},0);},0);
+
+  // KPIs
+  let html='<div class="k3" style="margin-bottom:14px;">'
+    +'<div class="kc kc-tl"><div class="kl">العمليات</div><div class="kv">'+_selCmpOps.size+'</div><div class="ks">مختارة</div></div>'
+    +'<div class="kc kc-gn"><div class="kl">الوحدات</div><div class="kv">'+totalU+'</div><div class="ks">وحدة</div></div>'
+    +'<div class="kc kc-or"><div class="kl">الأصناف</div><div class="kv">'+Object.keys(prodData).length+'</div><div class="ks">صنف</div></div></div>';
+
+  // Table
+  html+='<div style="overflow-x:auto;border-radius:10px;"><table style="font-size:.76rem;width:100%;border-collapse:collapse;">'
+    +'<thead><tr style="background:var(--dk);">'
+    +'<th style="padding:10px 14px;text-align:right;color:var(--sg);min-width:140px;position:sticky;right:0;background:var(--dk);">المنتج</th>'
+    +selOps.map(function(op){return'<th style="padding:9px 10px;text-align:center;min-width:90px;border-right:1px solid rgba(255,255,255,.07);">'
+      +'<div style="color:#e7dc83;font-size:.8rem;font-weight:900;">#'+opNum(op)+'</div>'
+      +'<div style="color:var(--sg);font-size:.66rem;margin-top:2px;">'+(op.site||"").replace("فرع ","").split(" - ")[0]+'</div>'
+      +'<div style="color:rgba(199,215,143,.55);font-size:.6rem;">'+fd(op.addedDate)+'</div></th>';}).join("")
+    +'<th style="padding:9px 8px;text-align:center;color:#e7dc83;font-size:.67rem;background:rgba(255,255,255,.05);">المجموع</th>'
+    +'</tr></thead><tbody>';
+
+  CATS.forEach(function(cat){
+    const catProds=Object.entries(prodData).filter(function(e){return e[1].cat===cat.k;});
+    if(!catProds.length)return;
+    html+='<tr style="background:linear-gradient(135deg,rgba(4,42,43,.1),rgba(2,82,83,.06));">'
+      +'<td colspan="'+(selOps.length+2)+'" style="padding:9px 14px;font-weight:900;font-size:.79rem;color:var(--tl);">'+cat.i+' '+cat.l+'</td></tr>';
+    const catTots=selOps.map(function(){return 0;});
+    catProds.forEach(function(entry){
+      const nm=entry[0],pd=entry[1];
+      const rowTot=selOps.reduce(function(s,op){return s+(pd.ops[op.id]||0);},0);
+      const maxQ=Math.max.apply(null,selOps.map(function(op){return pd.ops[op.id]||0;}).concat([1]));
+      html+='<tr style="border-top:1px solid rgba(4,42,43,.05);">'
+        +'<td style="padding:7px 14px;font-weight:600;position:sticky;right:0;background:#fff;border-left:1px solid rgba(4,42,43,.06);">'+nm+'</td>'
+        +selOps.map(function(op,ci){
+          const q=pd.ops[op.id]||0;catTots[ci]+=q;
+          if(!q)return'<td style="padding:7px 8px;text-align:center;background:rgba(4,42,43,.02);"><span style="color:#ddd;">—</span></td>';
+          const p=q/maxQ;
+          const bg=p>=0.65?"rgba(30,158,94,.12)":p>=0.3?"rgba(2,82,83,.07)":"rgba(212,114,31,.09)";
+          const fc=p>=0.65?"color:var(--gn);font-weight:800":p>=0.3?"color:var(--tl);font-weight:700":"color:var(--or);font-weight:700";
+          return'<td style="padding:7px 8px;text-align:center;background:'+bg+';border-right:1px solid rgba(4,42,43,.04);"><span style="font-family:var(--nm);font-size:.88rem;'+fc+';">'+q+'</span></td>';
+        }).join("")
+        +'<td style="padding:7px 8px;text-align:center;background:rgba(2,82,83,.07);font-family:var(--nm);font-weight:800;color:var(--tl);">'+rowTot+'</td></tr>';
+      html+='<tr style="background:rgba(2,82,83,.07);border-top:2px solid rgba(2,82,83,.15);">'
+        +'<td style="padding:8px 14px;font-weight:900;font-size:.79rem;color:var(--tl);position:sticky;right:0;background:rgba(2,82,83,.07);">إجمالي '+cat.l+'</td>'
+        +catTots.map(function(v){return'<td style="padding:8px;text-align:center;font-family:var(--nm);font-weight:900;color:var(--tl);">'+v+'</td>';}).join("")
+        +'<td style="padding:8px;text-align:center;font-family:var(--nm);font-weight:900;color:var(--tl);">'+catTots.reduce(function(s,v){return s+v;},0)+'</td></tr>';
+    });
+  });
+
+  const gt=selOps.map(function(op){return Object.values(prodData).reduce(function(s,pd){return s+(pd.ops[op.id]||0);},0);});
+  html+='<tr style="background:rgba(4,42,43,.09);border-top:3px solid var(--tl);">'
+    +'<td style="padding:9px 14px;font-weight:900;font-size:.81rem;position:sticky;right:0;background:rgba(4,42,43,.09);">الإجمالي الكلي</td>'
+    +gt.map(function(v){return'<td style="padding:9px 8px;text-align:center;font-family:var(--nm);font-weight:900;font-size:.9rem;color:var(--tl);">'+v+'</td>';}).join("")
+    +'<td style="padding:9px 8px;text-align:center;font-family:var(--nm);font-weight:900;font-size:.95rem;color:var(--tl);">'+gt.reduce(function(s,v){return s+v;},0)+'</td></tr>';
+  html+='</tbody></table></div>';
+  out.innerHTML=html;
 }
+
+
 function doInvCompare(){renderInvCompare();}
 function toggleCmpOp(id){
   const s=String(id);
